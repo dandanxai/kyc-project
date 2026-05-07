@@ -29,13 +29,42 @@ const routes: Array<RouteRecordRaw> = [
         path: 'home',
         name: 'CandidateHome',
         component: () => import('../views/candidate/Home.vue'), 
-        meta: { title: '首页 - 麒麟生态人才广场', role: 'candidate' }
+        meta: { title: '人才广场 - 麒麟生态', role: 'candidate' }
       },
       {
+        path: 'resume', // 对应侧边栏：智能画像
+        name: 'CandidateResume',
+        component: () => import('../views/candidate/Resume.vue'),
+        meta: { title: '智能画像 & 能力建模', role: 'candidate' }
+      },
+      // {
+      //   path: 'jobs', // 对应侧边栏：精准匹配
+      //   name: 'CandidateJobs',
+      //   component: () => import('../views/candidate/Jobs.vue'),
+      //   meta: { title: '精准匹配 - 职位推荐', role: 'candidate' }
+      // },
+      // {
+      //   path: 'messages', // 对应侧边栏：即时互联
+      //   name: 'CandidateMessages',
+      //   component: () => import('../views/candidate/Messages.vue'),
+      //   meta: { title: '消息中心', role: 'candidate' }
+      // },
+      // {
+      //   path: 'interview', // 对应侧边栏：AI 模拟面试
+      //   name: 'CandidateInterview',
+      //   component: () => import('../views/candidate/Interview.vue'),
+      //   meta: { title: 'AI 模拟面试训练', role: 'candidate' }
+      // },
+      // {
+      //   path: 'insights', // 对应侧边栏：产业洞察
+      //   name: 'CandidateInsights',
+      //   component: () => import('../views/candidate/Insights.vue'),
+      //   meta: { title: '产业洞察 & 趋势分析', role: 'candidate' }
+      // },
+      // 保留一个通用的 dashboard 路由作为备用或重定向目标
+      {
         path: 'dashboard',
-        name: 'CandidateDashboard',
-        component: () => import('../views/candidate/Dashboard.vue'),
-        meta: { title: '个人工作台 - 能力图谱', role: 'candidate' }
+        redirect: '/candidate/resume'
       }
     ]
   },
