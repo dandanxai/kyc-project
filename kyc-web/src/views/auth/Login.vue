@@ -1,5 +1,5 @@
 <template>
-    <div class="h-full w-full flex items-center justify-center relative overflow-hidden">
+    <div class="h-full w-full flex items-center justify-center relative overflow-hidden bg-gray-50/50">
     <div class="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-blue-100/40 blur-[120px] rounded-full"></div>
     <div class="absolute bottom-[-10%] left-[-5%] w-[500px] h-[500px] bg-indigo-100/30 blur-[120px] rounded-full"></div>
 
@@ -30,8 +30,18 @@
         </div>
 
         <div class="space-y-4">
-        <input type="text" placeholder="账号名称" class="w-full px-6 py-4 bg-gray-100/80 rounded-2xl focus:bg-white transition-all outline-none text-[15px] border-2 border-transparent focus:border-black/5" />
-        <input type="password" placeholder="输入密码" class="w-full px-6 py-4 bg-gray-100/80 rounded-2xl focus:bg-white transition-all outline-none text-[15px] border-2 border-transparent focus:border-black/5" />
+        <input 
+            v-model="account" 
+            type="text" 
+            placeholder="手机号码 / 电子邮箱" 
+            class="w-full px-6 py-4 bg-gray-100/80 rounded-2xl focus:bg-white transition-all outline-none text-[15px] border-2 border-transparent focus:border-black/5" 
+        />
+        <input 
+            v-model="password" 
+            type="password" 
+            placeholder="输入密码" 
+            class="w-full px-6 py-4 bg-gray-100/80 rounded-2xl focus:bg-white transition-all outline-none text-[15px] border-2 border-transparent focus:border-black/5" 
+        />
         </div>
 
         <button 
@@ -60,18 +70,50 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { loginCandidate } from '@/api/auth'
+import { toast } from '@/utils/toast' // 🎯 引入通用 Apple-Style 提示工具
 
 const router = useRouter()
 const role = ref<'candidate' | 'enterprise'>('candidate')
 const isLoggingIn = ref(false)
 
-const handleLogin = () => {
+// 响应式表单字段
+const account = ref('')
+const password = ref('')
+
+const handleLogin = async () => {
+    if (!account.value || !password.value) {
+    toast.warning('请输入账号和密码！') // 🎯 替换
+    return
+    }
+
+    if (role.value === 'enterprise') {
+    toast.warning('目前仅支持个人用户通过达梦数据库登录测试！') // 🎯 替换
+    return
+    }
+
     isLoggingIn.value = true
-    // 模拟 AI 验证时间，1.5秒后根据角色跳转
-    setTimeout(() => {
-    const target = role.value === 'candidate' ? '/candidate/dashboard' : '/enterprise/dashboard'
-    router.push(target)
+    
+    try {
+    const res = await loginCandidate({
+        account: account.value,
+        password: password.value
+    })
+
+    // 请求成功：将后端签发的 JWT 真实钥匙存入 localStorage
+    localStorage.setItem('auth_token', res.data.token) 
+    localStorage.setItem('user_info', JSON.stringify(res.data))
+
+    toast.success(`欢迎回来，${res.data.nickname || res.data.username}`) // 🎯 替换
+    
+    // 跳转到对应的个人端工作台
+    router.push('/candidate/dashboard')
+
+    } catch (error: any) {
+    console.error('【登录异常拦截】：', error)
+    toast.error(error.message || '登录异常，请检查后端运行状态！') // 🎯 替换
+    } finally {
     isLoggingIn.value = false
-    }, 1500)
+    }
 }
 </script>

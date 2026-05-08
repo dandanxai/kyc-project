@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: kyc-api
+  datasource:
+    driver-class-name: dm.jdbc.driver.DmDriver
+    # 🎯 干净规范的达梦连接：显式锁死 SYSDBA 模式，去除不生效的 autoDelimName 干扰
+    url: jdbc:dm://localhost:5236?schema=SYSDBA&autoDelimName=true&zeroDateTimeBehavior=convertToNull&useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
+    username: SYSDBA
+    password: 20050106@Hs
+  mybatis-plus:
+    configuration:
+      map-underscore-to-camel-case: true
+    global-config:
+      db-config:
+        table-underline: true
+        db-type: dm2 # 🎯 完美声明达梦数据库类型
+
+# KYC 平台自定义安全配置
+kyc:
+  jwt:
+    secret-key: kyc_platform_secret_key_2026_secure
+    expiration: 604800000
