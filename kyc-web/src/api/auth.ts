@@ -35,17 +35,14 @@ role: string;
 
 // 5. 个人详细信息返回体 (完全对应后端实体类 Candidate)
 export interface CandidateProfile {
-id: number;
-username: string;
-nickname?: string;
-phone?: string;
-email?: string;
-avatar?: string;
-status: number;
-role: string;
-jobStatus?: string; // 对应后端的 jobStatus 驼峰命名
-createTime?: string;
-updateTime?: string;
+    username: string;
+    nickname?: string;
+    phone?: string;
+    email?: string;
+    avatar?: string;
+    status: number;
+    role: string;
+    jobStatus?: string; // 对应后端的 jobStatus 驼峰命名
 }
 
 // 6. 更新基本资料参数载荷
@@ -58,11 +55,10 @@ avatar?: string;
 jobStatus?: string; // 对应求职状态选择
 }
 
-// 7. 更新密码参数载荷
+// 7. 更新密码参数载荷 (🎯 删除了 id)
 export interface UpdatePasswordParams {
-id: number;
-currentPassword?: string; // 旧密码，用于后端安全校验
-newPassword?: string;     // 新密码
+    currentPassword?: string; // 旧密码，用于后端安全校验
+    newPassword?: string;     // 新密码
 }
 
 // ==================== 🚀 规范的接口方法暴露 ====================
@@ -90,33 +86,36 @@ return request({
 } // 🎯 成功闭合 loginCandidate 函数
 
 /**
- * 获取当前登录用户的最新个人详细配置 (通过用户主键 ID)
+ * 8. 获取当前登录用户的最新个人详细配置 (🎯 无需传 id，后端自动从 Token 解析)
+ * 路由：GET /api/portal/candidate/profile
  */
-export function getCandidateProfile(id: number | string): Promise<ApiResponse<CandidateProfile>> {
-return request({
-    url: `/portal/candidate/profile/${id}`,
+export function getCandidateProfile(): Promise<ApiResponse<CandidateProfile>> {
+    return request({
+    url: '/portal/candidate/profile', // 🎯 丢掉 URL 末尾的 ID 占位
     method: 'get'
-})
+    })
 }
 
 /**
- * 更新个人基本资料 (数据安全写入达梦数据库)
+ * 9. 更新个人基本资料 (🎯 无需传 id)
+ * 路由：PUT /api/portal/candidate/profile/update
  */
-export function updateCandidateProfile(data: UpdateProfileParams): Promise<ApiResponse<CandidateProfile>> {
-return request({
+export function updateCandidateProfile(data: Partial<CandidateProfile>): Promise<ApiResponse<CandidateProfile>> {
+    return request({
     url: '/portal/candidate/profile/update',
     method: 'put',
-    data
-})
+    data // 🎯 data 里不再携带 id，后端直接用 Token 的 ID 覆盖
+    })
 }
 
 /**
- * 修改账户登录密码 (支持旧密码校验升级)
+ * 10. 修改个人账户密码 (🎯 无需传 id)
+ * 路由：PUT /api/portal/candidate/password/update
  */
 export function updateCandidatePassword(data: UpdatePasswordParams): Promise<ApiResponse<null>> {
-return request({
+    return request({
     url: '/portal/candidate/password/update',
     method: 'put',
-    data
-})
+    data // 🎯 data 里只有旧密码和新密码，不带 id
+    })
 }

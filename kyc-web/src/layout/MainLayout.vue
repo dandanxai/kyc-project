@@ -54,7 +54,7 @@
         :class="[isCollapsed ? 'justify-center' : 'justify-start pl-4']"
         >
             <div class="w-10 h-10 rounded-full border-2 border-white shadow-sm overflow-hidden flex-shrink-0 transition-transform duration-300 hover:rotate-6">
-                <img :src="userAvatar" alt="avatar" />
+                <img :src="userStore.userAvatar" alt="avatar" class="w-full h-full object-cover" />
             </div>
             
             <div v-if="!isCollapsed" class="ml-3 overflow-hidden flex-1 animate-fade-in">
@@ -159,107 +159,96 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { toast } from '@/utils/toast' // 🎯 引入高级 toast 提示
+import { ref, computed, onMounted, nextTick } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { useUserStore } from '@/store/user' // 🎯 引入 Pinia Store
+import { toast } from '@/utils/toast'
 
 const route = useRoute()
 const router = useRouter()
+const userStore = useUserStore() // 🎯 实例化 Store
 const isCollapsed = ref(true)
 
 // ================== 🔑 登录状态与用户信息安全获取 ==================
 
-// 动态检测本地是否有 token
 const isLoggedIn = computed(() => {
     return !!localStorage.getItem('auth_token')
 })
 
-// 动态解析用户信息，加入安全熔断机制，防止无 token 时报错
-const userInfo = computed(() => {
-    const infoStr = localStorage.getItem('user_info')
-    if (!infoStr) return null
+// 🎯 核心：组件挂载时，如果已登录但 Pinia 里没有用户信息（通常是刷新了网页），则静默请求 API
+onMounted(async () => {
     try {
-    return JSON.parse(infoStr)
-    } catch (e) {
-    console.error('解析用户信息失败', e)
-    return null
+        if (!userStore.hasLoaded) {
+            await userStore.fetchUserProfile()
+        }
+    } catch (error) {
+        console.error("Layout 初始化用户信息失败:", error)
     }
 })
 
 // 安全地映射昵称/用户名
 const nickname = computed(() => {
     if (isEnterprise.value) return 'HR_Partner'
-    return userInfo.value?.nickname || userInfo.value?.username || 'Captain_X'
-})
-
-// 用户头像安全降级机制
-const userAvatar = computed(() => {
-    // 如果有自定义头像则使用，否则返回一个优雅的 Dicebear 默认头像
-    return userInfo.value?.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix'
+    // 🎯 绑定 Pinia 里的昵称计算属性
+    return userStore.userNickname
 })
 
 const goToLogin = () => {
     router.push('/login')
 }
 
-// 统一的头部快捷操作（如果未登录，点击也需要提示并拦截）
+// 统一的头部快捷操作
 const handleHeaderAction = () => {
     if (!isLoggedIn.value) {
-    toast.warning('请先登录以使用此功能')
-    router.push('/login')
-    return
+        toast.warning('请先登录以使用此功能')
+        router.push('/login')
+        return
     }
-    // 已登录正常运行业务
     if (isEnterprise.value) {
-    toast.info('去往岗位发布控制台...')
+        toast.info('去往岗位发布控制台...')
     } else {
-    toast.info('快速解析上传中...')
+        toast.info('快速解析上传中...')
     }
 }
 
 // ================== 路由与菜单配置 ==================
 
-// 判断当前是否是企业端视图
 const isEnterprise = computed(() => route.path.startsWith('/enterprise'))
 
-// 动态侧边栏导航：根据双端自适应渲染
 const navItems = computed(() => {
     if (isEnterprise.value) {
         return [
-        { name: '管理大盘', path: '/enterprise/dashboard', icon: '📊' },
-        { name: 'AI 智配中心', path: '/enterprise/match', icon: '⚡' },
-        { name: '人才公海', path: '/enterprise/talent-pool', icon: '🧭' },
-        { name: '岗位管理', path: '/enterprise/jobs-manage', icon: '🎯' },
-        { name: '即时沟通', path: '/enterprise/messages', icon: '💬' }
-    ]
+            { name: '管理大盘', path: '/enterprise/dashboard', icon: '📊' },
+            { name: 'AI 智配中心', path: '/enterprise/match', icon: '⚡' },
+            { name: '人才公海', path: '/enterprise/talent-pool', icon: '🧭' },
+            { name: '岗位管理', path: '/enterprise/jobs-manage', icon: '🎯' },
+            { name: '即时沟通', path: '/enterprise/messages', icon: '💬' }
+        ]
     } else {
-    return [
-        { name: '人才广场', path: '/candidate/home', icon: '🧭' },
-        { name: '智能画像', path: '/candidate/resume', icon: '🧬' },
-        { name: '精准匹配', path: '/candidate/jobs', icon: '🎯' },
-        { name: '即时互联', path: '/candidate/messages', icon: '💬' },
-        { name: 'AI 模拟面试', path: '/candidate/interview', icon: '🤖' },
-        { name: '产业洞察', path: '/candidate/insights', icon: '📊' }
-    ]
+        return [
+            { name: '人才广场', path: '/candidate/home', icon: '🧭' },
+            { name: '智能画像', path: '/candidate/resume', icon: '🧬' },
+            { name: '精准匹配', path: '/candidate/jobs', icon: '🎯' },
+            { name: '即时互联', path: '/candidate/messages', icon: '💬' },
+            { name: 'AI 模拟面试', path: '/candidate/interview', icon: '🤖' },
+            { name: '产业洞察', path: '/candidate/insights', icon: '📊' }
+        ]
     }
 })
 
-// 动态路由大标题：适配候选人端与企业端
 const currentPageTitle = computed(() => {
     const titles: Record<string, string> = {
-    'home': '发现灵感',
-    'resume': '智能画像与职业建模',
-    'jobs': '精准匹配中心',
-    'messages': '即时沟通反馈',
-    'interview': 'AI 模拟面试工作台',
-    'insights': '信创产业与底层数据洞察',
-    
-    // 企业端
-    'dashboard': '企业数据看板 & 效能监控',
-    'match': 'AI 智能双向精准匹配',
-    'talent-pool': '麒麟人才生态公海',
-    'jobs-manage': '信创发布与岗位流转',
-    'enterprise/settings': '企业设置 & 基础资质配置'
+        'home': '发现灵感',
+        'resume': '智能画像与职业建模',
+        'jobs': '精准匹配中心',
+        'messages': '即时沟通反馈',
+        'interview': 'AI 模拟面试工作台',
+        'insights': '信创产业与底层数据洞察',
+        'dashboard': '企业数据看板 & 效能监控',
+        'match': 'AI 智能双向精准匹配',
+        'talent-pool': '麒麟人才生态公海',
+        'jobs-manage': '信创发布与岗位流转',
+        'enterprise/settings': '企业设置 & 基础资质配置'
     }
     const key = Object.keys(titles).find(k => route.path.includes(k))
     return key ? titles[key] : '系统控制台'
@@ -272,24 +261,24 @@ const menuStyle = ref({ top: '0px', left: '0px' })
 let delayTimer: ReturnType<typeof setTimeout> | null = null
 
 const showMenu = () => {
-    if (!isLoggedIn.value) return // 未登录直接拦截悬浮卡片菜单显示
+    if (!isLoggedIn.value) return 
     if (delayTimer) clearTimeout(delayTimer)
     
     nextTick(() => {
-    if (!userCardRef.value) return
-    const rect = userCardRef.value.getBoundingClientRect()
-    
-    menuStyle.value = {
-        top: `${rect.top + rect.height / 2 - 64}px`, // 居中校准
-        left: `${rect.right + 12}px` // 弹出在右侧12px外
-    }
-    isMenuVisible.value = true
+        if (!userCardRef.value) return
+        const rect = userCardRef.value.getBoundingClientRect()
+        
+        menuStyle.value = {
+            top: `${rect.top + rect.height / 2 - 64}px`, 
+            left: `${rect.right + 12}px` 
+        }
+        isMenuVisible.value = true
     })
 }
 
 const hideMenu = () => {
     delayTimer = setTimeout(() => {
-    isMenuVisible.value = false
+        isMenuVisible.value = false
     }, 150)
 }
 
@@ -297,20 +286,20 @@ const keepMenu = () => {
     if (delayTimer) clearTimeout(delayTimer)
 }
 
-// 动态路径跳转：跳转至个人配置或企业配置
 const goToSettings = () => {
     isMenuVisible.value = false
     if (isEnterprise.value) {
-    router.push('/enterprise/settings')
+        router.push('/enterprise/settings')
     } else {
-    router.push('/candidate/settings')
+        router.push('/candidate/settings')
     }
 }
 
-// 通用安全退出
+// 安全退出
 const handleLogout = () => {
     isMenuVisible.value = false
-    localStorage.clear()
+    localStorage.removeItem('auth_token')
+    userStore.clearUserInfo() // 🎯 清空 Pinia 内的用户缓存
     sessionStorage.clear()
     router.push('/login')
 }
@@ -320,7 +309,6 @@ const handleLogout = () => {
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* 侧边栏菜单文字淡入动画 */
 .fade-enter-active, .fade-leave-active {
     transition: opacity 0.25s ease, transform 0.25s ease;
 }
@@ -329,7 +317,6 @@ const handleLogout = () => {
     transform: translateX(-12px);
 }
 
-/* 浮窗 Apple 级动效 */
 .pop-enter-active {
     transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }

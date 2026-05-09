@@ -117,13 +117,6 @@ public class CandidateServiceImpl extends ServiceImpl<CandidateMapper, Candidate
         // 5. 封装前端需要呈现的用户极简卡片数据
         LoginResultVO result = new LoginResultVO();
         result.setToken(token);
-        result.setUsername(candidate.getUsername());
-        result.setNickname(candidate.getNickname());
-        result.setAvatar(candidate.getAvatar());
-        result.setEmail(candidate.getEmail());
-        result.setRole(candidate.getRole());
-        result.setPhone(candidate.getPhone());
-        result.setId(candidate.getId());
 
         return result;
     }

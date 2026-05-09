@@ -115,28 +115,30 @@
             <button 
                 @click="updatePassword" 
                 :disabled="isUpdatingPwd"
-                class="px-6 py-3 bg-black text-white disabled:bg-gray-400 text-xs font-bold rounded-xl transition-all active:scale-95 flex items-center gap-2"
+                class="px-6 py-3 bg-rose-500 hover:bg-rose-600 disabled:bg-gray-400 text-white text-xs font-bold rounded-xl transition-all active:scale-95 shadow-lg shadow-rose-500/10 flex items-center gap-2"
             >
                 <span v-if="isUpdatingPwd" class="animate-spin text-sm">⌛</span>
-                <span>更新登录密码</span>
+                <span>重置安全密码</span>
             </button>
             </div>
         </div>
 
         <div v-if="activeTab === 'privacy'" class="space-y-8 animate-fade-in">
             <div>
-            <h3 class="text-lg font-black text-black">隐私控制</h3>
-            <p class="text-[10px] text-gray-400 font-bold uppercase mt-1">Control your visibility to recruiters</p>
+            <h3 class="text-lg font-black text-black">隐私防沙箱设置</h3>
+            <p class="text-[10px] text-gray-400 font-bold uppercase mt-1">Control who can discover your portfolio</p>
             </div>
+
             <div class="space-y-6">
-            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl max-w-xl">
                 <div>
-                <h4 class="text-xs font-black text-black">允许企业搜索我的简历</h4>
-                <p class="text-[10px] text-gray-400 mt-1">开启后，信创企业 HR 可以在人才大厅搜寻到你并主动发起直面邀请</p>
+                <h4 class="text-xs font-black text-black">允许企业主动检索我</h4>
+                <p class="text-[10px] text-gray-400 mt-1">开启后，企业端才可以通过人才公海搜索到您的信息</p>
                 </div>
-                <input type="checkbox" v-model="privacyForm.isSearchable" class="w-4 h-4 accent-black cursor-pointer" />
+                <input v-model="privacyForm.isSearchable" type="checkbox" class="w-5 h-5 accent-black cursor-pointer" />
             </div>
             </div>
+
             <div class="pt-4">
             <button @click="savePrivacySettings" class="px-6 py-3 bg-black text-white text-xs font-bold rounded-xl transition-all active:scale-95">
                 保存隐私策略
@@ -146,21 +148,24 @@
 
         <div v-if="activeTab === 'system'" class="space-y-8 animate-fade-in">
             <div>
-            <h3 class="text-lg font-black text-black">系统配置</h3>
-            <p class="text-[10px] text-gray-400 font-bold uppercase mt-1">Customize your system behavior and view</p>
+            <h3 class="text-lg font-black text-black">系统偏好</h3>
+            <p class="text-[10px] text-gray-400 font-bold uppercase mt-1">System preference configurations</p>
             </div>
-            <div class="space-y-6">
+
+            <div class="space-y-6 max-w-md">
             <div class="space-y-2">
-                <label class="text-[10px] font-black text-gray-400 uppercase">系统主语言 Preference</label>
+                <label class="text-[10px] font-black text-gray-400 uppercase">语言偏好 (Language)</label>
                 <select v-model="systemForm.lang" class="w-full px-4 py-3 bg-gray-50 rounded-xl text-xs font-bold border border-transparent focus:outline-none focus:border-black focus:bg-white transition-all">
-                <option value="zh-CN">简体中文 (Chinese Simplified)</option>
-                <option value="en-US">English (US)</option>
+                <option value="zh-CN">简体中文 (zh-CN)</option>
+                <option value="en-US">English (en-US)</option>
+                <option value="ja-JP">日本語 (ja-JP)</option>
                 </select>
             </div>
             </div>
+
             <div class="pt-4">
             <button @click="saveSystemSettings" class="px-6 py-3 bg-black text-white text-xs font-bold rounded-xl transition-all active:scale-95">
-                应用配置
+                应用偏好
             </button>
             </div>
         </div>
@@ -172,18 +177,19 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { 
-    updateCandidateProfile, 
-    updateCandidatePassword, 
-    getCandidateProfile 
-} from '@/api/auth' 
+import { getCandidateProfile, updateCandidateProfile, updateCandidatePassword } from '@/api/auth'
+import { useUserStore } from '@/store/user' // 🎯 1. 引入 Pinia Store
 import { toast } from '@/utils/toast'
+
+// 💡 如果你的 Vite 路径解析有问题，可改成相对路径引入：
+// import { useUserStore } from '../store/user'
+
+const userStore = useUserStore() // 🎯 2. 实例化 Pinia 状态机
 
 const activeTab = ref('profile')
 const isLoading = ref(false)
 const isSaving = ref(false)
 const isUpdatingPwd = ref(false)
-
 const fileInputRef = ref<HTMLInputElement | null>(null)
 
 const tabs = [
@@ -201,7 +207,7 @@ const profileForm = reactive({
     phone: '',
     email: '',
     avatar: '',
-    jobStatus: '在校-寻找实习' // 对应实体类的 jobStatus 属性
+    jobStatus: '在校-寻找实习'
 })
 
 // 2. 安全设置密码修改表单
@@ -212,118 +218,109 @@ const securityForm = reactive({
 })
 
 // 3. 隐私与系统本地参数
-const privacyForm = reactive({ isSearchable: true })
-const systemForm = reactive({ lang: 'zh-CN' })
+const privacyForm = reactive({
+    isSearchable: true
+})
+const systemForm = reactive({
+    lang: 'zh-CN'
+})
 
 // ==================== 🚀 初始化生命周期钩子 ====================
 onMounted(async () => {
     isLoading.value = true
     try {
-    // 优先从 localStorage 提取主键 ID 与静态用户名
-    const rawUserInfo = localStorage.getItem('user_info')
-    if (rawUserInfo) {
-        const basicUser = JSON.parse(rawUserInfo)
-        profileForm.id = basicUser.id || 0
-        profileForm.username = basicUser.username || ''
+        // 🎯 1. 如果 Pinia 没数据（比如用户在这里按了 F5 刷新页面），才触发接口拉取
+        if (!userStore.hasLoaded) {
+            await userStore.fetchUserProfile()
+        }
         
-        // 调用 API 实时从数据库中拉取最新的资料细节
-        if (profileForm.id) {
-        const res = await getCandidateProfile(profileForm.id)
-        if (res && res.data) {
-            profileForm.nickname = res.data.nickname || ''
-            profileForm.phone = res.data.phone || ''
-            profileForm.email = res.data.email || ''
-            profileForm.avatar = res.data.avatar || ''
-            profileForm.jobStatus = res.data.jobStatus || '在校-寻找实习'
-        }
-        }
-    }
+        // 🎯 2. 现在 Pinia 里一定有数据了，直接从 Pinia 内存读取，不发任何网络请求！
+        profileForm.id = userStore.id || 0
+        profileForm.username = userStore.username
+        profileForm.nickname = userStore.nickname
+        profileForm.avatar = userStore.avatar
+        profileForm.phone = userStore.phone
+        profileForm.email = userStore.email
+        profileForm.jobStatus = userStore.jobStatus
+
     } catch (error: any) {
-    console.error('【加载个人配置失败】', error)
-    toast.error('加载最新的同步资料失败')
+        toast.error('账户数据同步失败！')
     } finally {
-    isLoading.value = false
+        isLoading.value = false
     }
 })
 
-// ==================== 🎯 功能一：更新基本资料到数据库 ====================
+// ==================== 🎯 保存个人资料更改 ====================
 const saveProfile = async () => {
-    if (!profileForm.id) {
-    toast.warning('未获取到账户 ID，请重新登录！')
-    return
-    }
-    if (!profileForm.nickname) {
-    toast.warning('用户昵称不能为空哦')
-    return
+    if (!profileForm.username) {
+        toast.warning('姓名不能为空！')
+        return
     }
 
     isSaving.value = true
     try {
-    // 提交对齐后的 CandidateProfile 数据包
-    await updateCandidateProfile({
-        id: profileForm.id,
-        username: profileForm.username,
-        nickname: profileForm.nickname,
-        phone: profileForm.phone,
-        email: profileForm.email,
-        avatar: profileForm.avatar,
-        jobStatus: profileForm.jobStatus
-    })
+        // 1. 调用 API 写入达梦数据库
+        const res = await updateCandidateProfile({
+            id: profileForm.id,
+            username: profileForm.username,
+            nickname: profileForm.nickname,
+            phone: profileForm.phone,
+            email: profileForm.email,
+            avatar: profileForm.avatar,
+            jobStatus: profileForm.jobStatus
+        })
 
-    // 同步更新本地 LocalStorage 保证左侧侧边栏(MainLayout)的头像昵称即时刷新显示
-    const rawUserInfo = localStorage.getItem('user_info')
-    if (rawUserInfo) {
-        const userObj = JSON.parse(rawUserInfo)
-        userObj.nickname = profileForm.nickname
-        userObj.avatar = profileForm.avatar
-        localStorage.setItem('user_info', JSON.stringify(userObj))
-    }
+        if (res.code === 200) {
+            // 🎯 2. 核心联动：数据库保存成功后，立刻同步更新 Pinia 状态机中的状态！
+            userStore.nickname = profileForm.nickname
+            userStore.avatar = profileForm.avatar
+            userStore.hasLoaded = true
 
-    toast.success('资料已安全更新至达梦数据库！')
+            toast.success('安全配置保存成功，全局视图已同步更新！ ✨')
+        }
     } catch (error: any) {
-    toast.error(error.message || '资料保存失败，请检查服务状态')
+        toast.error(error.message || '资料更新失败，请稍后重试')
     } finally {
-    isSaving.value = false
+        isSaving.value = false
     }
 }
 
-// ==================== 🎯 功能二：修改账号登录密码 ====================
+// ==================== 🎯 账户密码修改逻辑 ====================
 const updatePassword = async () => {
-    if (!securityForm.currentPassword || !securityForm.newPassword) {
-    toast.warning('请完整填写旧密码与新密码')
-    return
+    if (!securityForm.currentPassword) {
+        toast.warning('请提供当前密码以验证身份！')
+        return
     }
-    if (securityForm.newPassword.length < 6) {
-    toast.warning('新密码长度不能少于 6 位')
-    return
+    if (!securityForm.newPassword || securityForm.newPassword.length < 6) {
+        toast.warning('新密码长度不得少于 6 位！')
+        return
     }
     if (securityForm.newPassword !== securityForm.confirmPassword) {
-    toast.warning('两次新密码不一致，请核对')
-    return
+        toast.warning('两次输入的新密码不匹配！')
+        return
     }
 
     isUpdatingPwd.value = true
     try {
-    // 提交旧密码校验修改请求
-    await updateCandidatePassword({
-        id: profileForm.id,
-        currentPassword: securityForm.currentPassword,
-        newPassword: securityForm.newPassword
-    })
+        await updateCandidatePassword({
+            id: profileForm.id,
+            currentPassword: securityForm.currentPassword,
+            newPassword: securityForm.newPassword
+        })
 
-    toast.success('安全密码修改成功！')
-    // 重置重置密码表单
-    securityForm.currentPassword = ''
-    securityForm.newPassword = ''
-    securityForm.confirmPassword = ''
+        toast.success('安全密码修改成功！下次登录时生效。')
+        // 清空密码表单
+        securityForm.currentPassword = ''
+        securityForm.newPassword = ''
+        securityForm.confirmPassword = ''
     } catch (error: any) {
-    toast.error(error.message || '密码修改失败，请确认旧密码正确')
+        toast.error(error.message || '密码修改失败，请确认旧密码正确')
     } finally {
-    isUpdatingPwd.value = false
+        isUpdatingPwd.value = false
     }
 }
 
-// ==================== 🎯 功能三：非实体关联的其他设置反馈 ====================
+// ==================== 🎯 其他偏好设置 ====================
 const savePrivacySettings = () => {
     toast.success('隐私防沙箱策略保存成功，已实时生效！')
 }
@@ -332,7 +329,7 @@ const saveSystemSettings = () => {
     toast.success('系统推送与语言偏好应用成功！')
 }
 
-// ==================== 🎯 头像选择与模拟 Base64 解析处理 ====================
+// ==================== 🎯 头像选择处理 ====================
 const triggerAvatarUpload = () => {
     fileInputRef.value?.click()
 }
@@ -340,22 +337,21 @@ const triggerAvatarUpload = () => {
 const handleAvatarChange = (event: Event) => {
     const target = event.target as HTMLInputElement
     if (target.files && target.files[0]) {
-    const file = target.files[0]
-    // 限制 2MB
-    if (file.size > 2 * 1024 * 1024) {
-        toast.warning('头像文件大小不能超过 2MB')
-        return
-    }
-
-    const reader = new FileReader()
-    reader.onload = (e) => {
-        if (e.target?.result) {
-        // 直接转换为 Base64 格式并赋给 avatar 字段 (也可改为上传至 OSS / 静态服务器)
-        profileForm.avatar = e.target.result as string
-        toast.success('头像就绪，点击下方保存更改后生效！')
+        const file = target.files[0]
+        if (file.size > 2 * 1024 * 1024) {
+            toast.warning('头像文件大小不能超过 2MB')
+            return
         }
-    }
-    reader.readAsDataURL(file)
+
+        const reader = new FileReader()
+        reader.onload = (e) => {
+            if (e.target?.result) {
+                // 转成 Base64
+                profileForm.avatar = e.target.result as string
+                toast.success('本地解析成功，请点击“保存更改”进行云同步')
+            }
+        }
+        reader.readAsDataURL(file)
     }
 }
 </script>
@@ -363,11 +359,12 @@ const handleAvatarChange = (event: Event) => {
 <style scoped>
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
 .animate-fade-in {
-    animation: fadeIn 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    animation: fadeIn 0.35s ease-out forwards;
 }
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(4px); }
+    from { opacity: 0; transform: translateY(6px); }
     to { opacity: 1; transform: translateY(0); }
 }
 </style>

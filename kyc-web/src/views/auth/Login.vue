@@ -71,49 +71,54 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { loginCandidate } from '@/api/auth'
-import { toast } from '@/utils/toast' // 🎯 引入通用 Apple-Style 提示工具
+import { useUserStore } from '@/store/user' // 🎯 引入 Pinia Store
+import { toast } from '@/utils/toast'
 
 const router = useRouter()
+const userStore = useUserStore() // 🎯 实例化 Store
+
 const role = ref<'candidate' | 'enterprise'>('candidate')
 const isLoggingIn = ref(false)
 
-// 响应式表单字段
 const account = ref('')
 const password = ref('')
 
 const handleLogin = async () => {
     if (!account.value || !password.value) {
-    toast.warning('请输入账号和密码！') // 🎯 替换
-    return
+        toast.warning('请输入账号和密码！')
+        return
     }
 
     if (role.value === 'enterprise') {
-    toast.warning('目前仅支持个人用户通过达梦数据库登录测试！') // 🎯 替换
-    return
+        toast.warning('目前仅支持个人用户通过达梦数据库登录测试！')
+        return
     }
 
     isLoggingIn.value = true
     
     try {
-    const res = await loginCandidate({
-        account: account.value,
-        password: password.value
-    })
+        const res = await loginCandidate({
+            account: account.value,
+            password: password.value
+        })
 
-    // 请求成功：将后端签发的 JWT 真实钥匙存入 localStorage
-    localStorage.setItem('auth_token', res.data.token) 
-    localStorage.setItem('user_info', JSON.stringify(res.data))
+        // 1. 存储安全 JWT 令牌
+        localStorage.setItem('auth_token', res.data.token) 
 
-    toast.success(`欢迎回来，${res.data.nickname || res.data.username}`) // 🎯 替换
-    
-    // 跳转到对应的个人端工作台
-    router.push('/candidate/dashboard')
+        // 2. 🎯 顺藤摸瓜：利用刚刚存好的 Token，通知 Pinia 去后台把用户信息拉下来
+        await userStore.fetchUserProfile()
+
+        // 3. 从 Pinia 获取热乎的昵称进行欢迎
+        toast.success(`欢迎回来，${userStore.userNickname.value}`) 
+        
+        // 4. 跳转到个人工作台
+        router.push('/candidate/dashboard')
 
     } catch (error: any) {
-    console.error('【登录异常拦截】：', error)
-    toast.error(error.message || '登录异常，请检查后端运行状态！') // 🎯 替换
+        console.error('【登录异常拦截】：', error)
+        toast.error(error.message || '登录异常，请检查后端运行状态！')
     } finally {
-    isLoggingIn.value = false
+        isLoggingIn.value = false
     }
 }
 </script>

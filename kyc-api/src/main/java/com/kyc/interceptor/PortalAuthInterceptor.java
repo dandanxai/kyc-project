@@ -47,6 +47,7 @@ public class PortalAuthInterceptor implements HandlerInterceptor {
                 if ("candidate".equals(userType)) {
                     // 将当前登录用户 ID 存入 request 作用域中，方便后续 Controller 直接获取
                     request.setAttribute("currentUserId", userId);
+                    com.kyc.common.context.UserContext.setUserId(Long.parseLong(userId));
                     return true; // 🎯 放行请求！
                 }
             }
@@ -69,5 +70,10 @@ public class PortalAuthInterceptor implements HandlerInterceptor {
         String json = objectMapper.writeValueAsString(result);
 
         response.getWriter().write(json);
+    }
+
+    @Override
+    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
+        com.kyc.common.context.UserContext.clear();
     }
 }
