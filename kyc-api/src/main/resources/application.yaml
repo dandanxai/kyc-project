@@ -20,3 +20,5 @@ kyc:
   jwt:
     secret-key: kyc_platform_secret_key_2026_secure
     expiration: 604800000
+  upload:
+    resume-path: "D:/Desktop/kyc-project/kyc-api/uploads/resumes"
