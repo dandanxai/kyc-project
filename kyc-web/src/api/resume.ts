@@ -73,3 +73,15 @@ return request({
     method: 'get'
 })
 }
+
+/**
+ * 获取简历预览的 PDF 二进制流
+ * @param resumeId 简历主键ID
+ */
+export function getResumePreviewBlob(resumeId: number) {
+    return request({
+        url: `/portal/candidate/resume/preview/${resumeId}`,
+        method: 'get',
+        responseType: 'blob' // 🔥 极其重要！必须配置为 'blob'，否则后端传过来的流会被 Axios 默默转成字符串，导致 PDF 文件损坏！
+    })
+}

@@ -5,14 +5,26 @@ import com.kyc.common.context.UserContext;
 import com.kyc.entity.CandidateResume;
 import com.kyc.service.CandidateResumeService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.*;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import java.io.File;
+import org.springframework.core.io.Resource;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.OutputStream;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -147,61 +159,8 @@ public class PortalCandidateResumeController {
         }
     }
 
-    /**
-     * 7. 智能解析简历画像（测试阶段：直接返回硬编码 Mock 数据，避免请求 Python AI 消耗 Token）
-     * 路由：GET /api/portal/candidate/resume/parse/{resumeId}
-     */
-    @GetMapping("/parse/{resumeId}")
-    public CommonResult<Object> parseResume(@PathVariable Long resumeId) {
-        try {
-            Long userId = UserContext.getUserId();
-
-            // 1. 安全校验：确保当前用户有该简历的权限
-            CandidateResume resume = candidateResumeService.getById(resumeId);
-            if (resume == null || !resume.getUserId().equals(userId)) {
-                return CommonResult.validateFailed("简历不存在或无权操作");
-            }
-
-            // ==================== 🎯 硬编码 Mock 数据开始 ====================
-
-            // 1. 构建最内层的 AI 解析画像数据体 (data.data)
-            Map<String, Object> aiData = new HashMap<>();
-            aiData.put("name", "黄胜");
-            aiData.put("education", "大专，滁州职业技术学院，软件技术专业");
-            aiData.put("expertise", Arrays.asList(
-                    "Java", "Spring Boot", "MyBatis", "MyBatis-Plus",
-                    "Vue2", "Vue3", "ElementUI", "Axios",
-                    "UniApp", "ECharts", "DataV", "Redis", "MySQL"
-            ));
-            aiData.put("artifacts", Arrays.asList(
-                    "乐行旅途小程序（已上线微信）",
-                    "凌云智控物联网设备管理平台（含实时监控大屏，已部署）",
-                    "个人项目展示全栈平台（个人网页版简历）",
-                    "3项软件著作权"
-            ));
-            aiData.put("dmSql", "未在简历中提及");
-            aiData.put("llmAi", "未在简历中提及");
-            aiData.put("language", "未在简历中提及");
-
-            // 2. 模拟 Python FastAPI 端返回的外层包裹结构 (data)
-            Map<String, Object> pythonResponse = new HashMap<>();
-            pythonResponse.put("code", 200);
-            pythonResponse.put("success", true);
-            pythonResponse.put("message", "AI 深度画像提取完毕");
-            pythonResponse.put("data", aiData);
-
-            // 3. 通过 CommonResult.success 包装后返回（对应最外层的 code、message、data）
-            return CommonResult.success(pythonResponse);
-
-            // ==================== 🎯 硬编码 Mock 数据结束 ====================
-
-        } catch (Exception e) {
-            return CommonResult.failed("AI 代理服务发生阻碍: " + e.getMessage());
-        }
-    }
-
 //    /**
-//     * 7. 智能解析简历画像（前端调用 Java，Java 代理请求 Python AI）
+//     * 7. 智能解析简历画像（测试阶段：直接返回硬编码 Mock 数据，避免请求 Python AI 消耗 Token）
 //     * 路由：GET /api/portal/candidate/resume/parse/{resumeId}
 //     */
 //    @GetMapping("/parse/{resumeId}")
@@ -209,39 +168,138 @@ public class PortalCandidateResumeController {
 //        try {
 //            Long userId = UserContext.getUserId();
 //
-//            // 1. 获取数据库中的文件存储路径
+//            // 1. 安全校验：确保当前用户有该简历的权限
 //            CandidateResume resume = candidateResumeService.getById(resumeId);
 //            if (resume == null || !resume.getUserId().equals(userId)) {
 //                return CommonResult.validateFailed("简历不存在或无权操作");
 //            }
 //
-//            // 2. 获取本地磁盘的物理文件
-//            File file = new File(resume.getFilePath());
-//            if (!file.exists()) {
-//                return CommonResult.failed("本地磁盘未检测到对应的简历文件实体");
-//            }
+//            // ==================== 🎯 硬编码 Mock 数据开始 ====================
 //
-//            // 3. 构建 MultiValueMap，模拟浏览器表单向 Python FastAPI 发送二进制数据
-//            HttpHeaders headers = new HttpHeaders();
-//            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+//            // 1. 构建最内层的 AI 解析画像数据体 (data.data)
+//            Map<String, Object> aiData = new HashMap<>();
+//            aiData.put("name", "黄胜");
+//            aiData.put("education", "大专，滁州职业技术学院，软件技术专业");
+//            aiData.put("expertise", Arrays.asList(
+//                    "Java", "Spring Boot", "MyBatis", "MyBatis-Plus",
+//                    "Vue2", "Vue3", "ElementUI", "Axios",
+//                    "UniApp", "ECharts", "DataV", "Redis", "MySQL"
+//            ));
+//            aiData.put("artifacts", Arrays.asList(
+//                    "乐行旅途小程序（已上线微信）",
+//                    "凌云智控物联网设备管理平台（含实时监控大屏，已部署）",
+//                    "个人项目展示全栈平台（个人网页版简历）",
+//                    "3项软件著作权"
+//            ));
+//            aiData.put("dmSql", "未在简历中提及");
+//            aiData.put("llmAi", "未在简历中提及");
+//            aiData.put("language", "未在简历中提及");
 //
-//            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-//            body.add("file", new FileSystemResource(file));
+//            // 2. 模拟 Python FastAPI 端返回的外层包裹结构 (data)
+//            Map<String, Object> pythonResponse = new HashMap<>();
+//            pythonResponse.put("code", 200);
+//            pythonResponse.put("success", true);
+//            pythonResponse.put("message", "AI 深度画像提取完毕");
+//            pythonResponse.put("data", aiData);
 //
-//            HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+//            // 3. 通过 CommonResult.success 包装后返回（对应最外层的 code、message、data）
+//            return CommonResult.success(pythonResponse);
 //
-//            // 4. 发送 POST 请求给本地 Python (kyc-ai-service)
-//            String pythonUrl = "http://127.0.0.1:8002/api/ai/resume/parse";
-//            ResponseEntity<Object> response = restTemplate.postForEntity(pythonUrl, requestEntity, Object.class);
+//            // ==================== 🎯 硬编码 Mock 数据结束 ====================
 //
-//            if (response.getStatusCode() == HttpStatus.OK) {
-//                // 5. 顺畅返回 Python 大模型解析出来的 JSON 画像
-//                return CommonResult.success(response.getBody());
-//            } else {
-//                return CommonResult.failed("AI 引擎调用异常");
-//            }
 //        } catch (Exception e) {
 //            return CommonResult.failed("AI 代理服务发生阻碍: " + e.getMessage());
 //        }
 //    }
+
+    /**
+     * 7. 智能解析简历画像（前端调用 Java，Java 代理请求 Python AI）
+     * 路由：GET /api/portal/candidate/resume/parse/{resumeId}
+     */
+    @GetMapping("/parse/{resumeId}")
+    public CommonResult<Object> parseResume(@PathVariable Long resumeId) {
+        try {
+            Long userId = UserContext.getUserId();
+
+            // 1. 获取数据库中的文件存储路径
+            CandidateResume resume = candidateResumeService.getById(resumeId);
+            if (resume == null || !resume.getUserId().equals(userId)) {
+                return CommonResult.validateFailed("简历不存在或无权操作");
+            }
+
+            // 2. 获取本地磁盘的物理文件
+            File file = new File(resume.getFilePath());
+            if (!file.exists()) {
+                return CommonResult.failed("本地磁盘未检测到对应的简历文件实体");
+            }
+
+            // 3. 构建 MultiValueMap，模拟浏览器表单向 Python FastAPI 发送二进制数据
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            body.add("file", new FileSystemResource(file));
+
+            HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+
+            // 4. 发送 POST 请求给本地 Python (kyc-ai-service)
+            String pythonUrl = "http://127.0.0.1:8002/api/ai/resume/parse";
+            ResponseEntity<Object> response = restTemplate.postForEntity(pythonUrl, requestEntity, Object.class);
+
+            if (response.getStatusCode() == HttpStatus.OK) {
+                // 5. 顺畅返回 Python 大模型解析出来的 JSON 画像
+                return CommonResult.success(response.getBody());
+            } else {
+                return CommonResult.failed("AI 引擎调用异常");
+            }
+        } catch (Exception e) {
+            return CommonResult.failed("AI 代理服务发生阻碍: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 直接预览简历物理文件（像浏览器打开PDF一样）
+     */
+    @GetMapping("/preview/{id}")
+    public void previewResume(@PathVariable Long id, HttpServletResponse response) {
+        try {
+            // 1. 获取实体
+            CandidateResume resume = candidateResumeService.getById(id);
+            if (resume == null) {
+                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                return;
+            }
+
+            // 2. 检查本地物理文件
+            File file = new File(resume.getFilePath());
+            if (!file.exists()) {
+                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                return;
+            }
+
+            // 3. 规避 Tomcat 字符集报错，对中文文件名进行 URL 编码
+            String encodedFilename = URLEncoder.encode(file.getName(), StandardCharsets.UTF_8.toString())
+                    .replaceAll("\\+", "%20"); // 替换空格转义
+
+            // 4. 直接在 response 中设置最纯净的响应头
+            response.setContentType("application/pdf");
+            // 使用 RFC 5987 规范标准，完美兼容各种浏览器和 Tomcat 版本
+            response.setHeader("Content-Disposition", "inline; filename*=UTF-8''" + encodedFilename);
+            response.setContentLengthLong(file.length());
+
+            // 5. 管道对拷：直接把文件流灌进 response 的输出流中
+            try (FileInputStream fis = new FileInputStream(file);
+                 OutputStream os = response.getOutputStream()) {
+                byte[] buffer = new byte[8192];
+                int bytesRead;
+                while ((bytesRead = fis.read(buffer)) != -1) {
+                    os.write(buffer, 0, bytesRead);
+                }
+                os.flush(); // 强制刷出缓冲区
+            }
+
+        } catch (Exception e) {
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        }
+    }
 }

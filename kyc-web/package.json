@@ -9,7 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@antv/g6": "^5.1.1",
     "axios": "^1.16.0",
+    "docx-preview": "^0.3.7",
     "echarts": "^6.0.0",
     "naive-ui": "^2.44.1",
     "pinia": "^3.0.4",

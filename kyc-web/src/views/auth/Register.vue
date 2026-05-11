@@ -1,7 +1,7 @@
 <template>
     <div class="h-full w-full flex items-center justify-center relative overflow-hidden bg-gray-50/50 py-10">
-    <div class="absolute top-[-10%] left-[-5%] w-[600px] h-[600px] bg-purple-100/40 blur-[120px] rounded-full"></div>
-    <div class="absolute bottom-[-10%] right-[-5%] w-[500px] h-[500px] bg-blue-100/30 blur-[120px] rounded-full"></div>
+    <div class="absolute top-[-10%] left-[-5%] w-[600px] h-[600px] bg-purple-100/40 blur-[120px] rounded-full pointer-events-none"></div>
+    <div class="absolute bottom-[-10%] right-[-5%] w-[500px] h-[500px] bg-blue-100/30 blur-[120px] rounded-full pointer-events-none"></div>
 
     <div class="relative z-10 w-[95%] max-w-[450px] bg-white/80 backdrop-blur-3xl p-10 rounded-[40px] shadow-2xl shadow-black/5 border border-white overflow-y-auto max-h-[90vh] no-scrollbar">
         
@@ -13,147 +13,158 @@
         <div class="space-y-1 mb-6">
         <div class="flex p-1.5 bg-gray-200/50 rounded-2xl">
             <button 
-            @click="role = 'candidate'" 
-            :class="role === 'candidate' ? 'bg-white shadow-md text-black' : 'text-gray-500'" 
-            class="flex-1 py-2.5 text-[13px] font-semibold rounded-xl transition-all duration-300"
+            @click="role = 'candidate'"
+            :class="role === 'candidate' ? 'bg-white text-black shadow-sm' : 'text-gray-500 hover:text-black'"
+            class="flex-1 py-3 text-[14px] font-semibold rounded-xl transition-all duration-300"
             >
-            个人注册
+            新秀求职者
             </button>
             <button 
-            @click="role = 'enterprise'" 
-            :class="role === 'enterprise' ? 'bg-white shadow-md text-black' : 'text-gray-500'" 
-            class="flex-1 py-2.5 text-[13px] font-semibold rounded-xl transition-all duration-300"
+            @click="role = 'enterprise'"
+            :class="role === 'enterprise' ? 'bg-white text-black shadow-sm' : 'text-gray-500 hover:text-black'"
+            class="flex-1 py-3 text-[14px] font-semibold rounded-xl transition-all duration-300"
             >
-            企业注册
+            合作企业
             </button>
         </div>
         </div>
 
-        <div class="space-y-4">
+        <div v-if="role === 'candidate'" class="flex justify-center space-x-6 mb-6 text-[13px]">
+        <button 
+            @click="registerMethod = 'phone'"
+            :class="registerMethod === 'phone' ? 'text-black font-bold border-b-2 border-black pb-1' : 'text-gray-400'"
+            class="transition-all"
+        >
+            手机号注册
+        </button>
+        <button 
+            @click="registerMethod = 'email'"
+            :class="registerMethod === 'email' ? 'text-black font-bold border-b-2 border-black pb-1' : 'text-gray-400'"
+            class="transition-all"
+        >
+            邮箱注册
+        </button>
+        </div>
+
+        <form @submit.prevent="handleRegister">
         
-        <div v-if="registerMethod === 'phone'" class="space-y-1">
-            <label class="text-[11px] font-bold text-gray-400 ml-1">手机号码</label>
+        <div v-if="role === 'candidate'" class="space-y-4 mb-4">
+            <div v-if="registerMethod === 'phone'" class="relative">
             <input 
-            v-model="form.phone" 
-            type="tel" 
-            placeholder="输入11位手机号" 
-            class="w-full px-5 py-3.5 bg-gray-100/80 rounded-2xl focus:bg-white transition-all outline-none text-[14px] border-2 border-transparent focus:border-black/5" 
+                v-model="form.phone" 
+                type="tel" 
+                placeholder="请输入中国大陆手机号" 
+                class="w-full px-5 py-4 bg-gray-100/80 focus:bg-white border border-transparent focus:border-black rounded-2xl outline-none transition-all text-[15px]"
             />
+            </div>
+
+            <div v-else class="relative">
+            <input 
+                v-model="form.email" 
+                type="email" 
+                placeholder="请输入企业/个人常用邮箱" 
+                class="w-full px-5 py-4 bg-gray-100/80 focus:bg-white border border-transparent focus:border-black rounded-2xl outline-none transition-all text-[15px]"
+            />
+            </div>
         </div>
 
-        <div v-if="registerMethod === 'email'" class="space-y-1">
-            <label class="text-[11px] font-bold text-gray-400 ml-1">电子邮箱</label>
+        <div v-else class="space-y-4 mb-4 animate-fade-in">
+            <div class="relative">
             <input 
-            v-model="form.email" 
-            type="email" 
-            placeholder="example@domain.com" 
-            class="w-full px-5 py-3.5 bg-gray-100/80 rounded-2xl focus:bg-white transition-all outline-none text-[14px] border-2 border-transparent focus:border-black/5" 
+                v-model="form.username" 
+                type="text" 
+                placeholder="企业登录账号 (必填)" 
+                class="w-full px-5 py-4 bg-gray-100/80 focus:bg-white border border-transparent focus:border-black rounded-2xl outline-none transition-all text-[15px]"
             />
-        </div>
+            </div>
 
-        <div class="space-y-1">
-            <label class="text-[11px] font-bold text-gray-400 ml-1">设置登录密码</label>
-            <input 
-            v-model="form.password" 
-            type="password" 
-            placeholder="设置密码" 
-            class="w-full px-5 py-3.5 bg-gray-100/80 rounded-2xl focus:bg-white transition-all outline-none text-[14px] border-2 border-transparent focus:border-black/5" 
-            />
-        </div>
-
-        <div class="space-y-1">
-            <label class="text-[11px] font-bold text-gray-400 ml-1">再次确认密码</label>
-            <input 
-            v-model="form.confirmPassword" 
-            type="password" 
-            placeholder="再次确认密码" 
-            class="w-full px-5 py-3.5 bg-gray-100/80 rounded-2xl focus:bg-white transition-all outline-none text-[14px] border-2 border-transparent focus:border-black/5" 
-            />
-            <p v-if="form.confirmPassword && form.password !== form.confirmPassword" class="text-red-400 text-[12px] ml-2">
-            两次输入的密码不一致
-            </p>
-        </div>
-
-        <div v-if="role === 'enterprise'" class="pt-4 border-t border-gray-100 space-y-4">
-            <p class="text-[12px] font-bold text-black ml-1">企业主体认证信息</p>
-            
-            <div class="space-y-1">
-            <label class="text-[11px] font-bold text-gray-400 ml-1">企业名称</label>
+            <div class="relative">
             <input 
                 v-model="form.enterpriseName" 
                 type="text" 
-                placeholder="请输入工商注册全称" 
-                class="w-full px-5 py-3.5 bg-gray-100/80 rounded-2xl focus:bg-white transition-all outline-none text-[14px] border-2 border-transparent focus:border-black/5" 
+                placeholder="企业工商全称 (必填)" 
+                class="w-full px-5 py-4 bg-gray-100/80 focus:bg-white border border-transparent focus:border-black rounded-2xl outline-none transition-all text-[15px]"
             />
             </div>
 
-            <div class="space-y-1">
-            <label class="text-[11px] font-bold text-gray-400 ml-1">行业类型</label>
+            <div class="relative">
             <input 
-                v-model="form.industry" 
+                v-model="form.legalPerson" 
                 type="text" 
-                placeholder="如：信创软件 / 操作系统" 
-                class="w-full px-5 py-3.5 bg-gray-100/80 rounded-2xl focus:bg-white transition-all outline-none text-[14px] border-2 border-transparent focus:border-black/5" 
+                placeholder="企业法人代表姓名 (必填)" 
+                class="w-full px-5 py-4 bg-gray-100/80 focus:bg-white border border-transparent focus:border-black rounded-2xl outline-none transition-all text-[15px]"
+            />
+            </div>
+
+            <div class="relative">
+            <input 
+                v-model="form.enterpriseCode" 
+                type="text" 
+                placeholder="统一社会信用代码 (必填)" 
+                class="w-full px-5 py-4 bg-gray-100/80 focus:bg-white border border-transparent focus:border-black rounded-2xl outline-none transition-all text-[15px]"
+            />
+            </div>
+
+            <div class="relative">
+            <input 
+                v-model="form.contactName" 
+                type="text" 
+                placeholder="联系人姓名 (必填)" 
+                class="w-full px-5 py-4 bg-gray-100/80 focus:bg-white border border-transparent focus:border-black rounded-2xl outline-none transition-all text-[15px]"
+            />
+            </div>
+
+            <div class="relative">
+            <input 
+                v-model="form.phone" 
+                type="tel" 
+                placeholder="联系人手机号码 (必填)" 
+                class="w-full px-5 py-4 bg-gray-100/80 focus:bg-white border border-transparent focus:border-black rounded-2xl outline-none transition-all text-[15px]"
             />
             </div>
         </div>
 
+        <div class="space-y-4 mb-6">
+            <div class="relative">
+            <input 
+                v-model="form.password" 
+                type="password" 
+                placeholder="安全密码 (建议不低于 6 位)" 
+                class="w-full px-5 py-4 bg-gray-100/80 focus:bg-white border border-transparent focus:border-black rounded-2xl outline-none transition-all text-[15px]"
+                required
+            />
+            </div>
+            <div class="relative">
+            <input 
+                v-model="form.confirmPassword" 
+                type="password" 
+                placeholder="重复输入安全密码以确认" 
+                class="w-full px-5 py-4 bg-gray-100/80 focus:bg-white border border-transparent focus:border-black rounded-2xl outline-none transition-all text-[15px]"
+                required
+            />
+            </div>
         </div>
 
-        <div class="mt-8 flex flex-col items-center justify-center space-y-3">
-        <span class="text-[11px] font-bold text-gray-400 tracking-wider">其他注册方式</span>
-        
-        <div class="flex items-center gap-6">
-            <button 
-            @click="registerMethod = 'phone'"
-            :class="registerMethod === 'phone' ? 'bg-black text-white scale-110 shadow-lg' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'"
-            class="w-11 h-11 rounded-full flex items-center justify-center transition-all duration-300 relative group"
-            title="使用手机号注册"
-            >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
-                <line x1="12" y1="18" x2="12.01" y2="18"></line>
-            </svg>
-            </button>
-
-            <button 
-            @click="registerMethod = 'email'"
-            :class="registerMethod === 'email' ? 'bg-black text-white scale-110 shadow-lg' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'"
-            class="w-11 h-11 rounded-full flex items-center justify-center transition-all duration-300 relative group"
-            title="使用电子邮箱注册"
-            >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                <polyline points="22,6 12,13 2,6"></polyline>
-            </svg>
-            </button>
-        </div>
-        </div>
-
-        <div class="mt-6 flex items-start gap-2 ml-1">
-        <input type="checkbox" v-model="form.agree" class="mt-1 w-4 h-4 accent-black" />
-        <label class="text-[12px] text-gray-400 leading-relaxed">
-            我已阅读并同意 <span class="text-black font-medium underline">用户服务协议</span> 和 <span class="text-black font-medium underline">隐私政策</span>
-        </label>
+        <div class="flex items-start space-x-2.5 px-1 text-[13px] text-gray-400 mb-6 cursor-pointer">
+            <input type="checkbox" id="agree" class="mt-0.5 rounded border-gray-300 text-black focus:ring-black" required />
+            <label for="agree" class="leading-relaxed">
+            我已阅读并同意 <a href="#" class="text-black hover:underline font-medium">《用户使用服务协议》</a> 与 <a href="#" class="text-black hover:underline font-medium">《隐私保护政策》</a>
+            </label>
         </div>
 
         <button 
-        @click="submitRegister"
-        :disabled="!form.agree || isSubmitting"
-        class="w-full mt-8 py-4 bg-black text-white rounded-[20px] text-[15px] font-bold hover:bg-gray-800 active:scale-[0.98] transition-all shadow-xl shadow-black/10 disabled:bg-gray-300 flex items-center justify-center"
+            type="submit" 
+            :disabled="isSubmitting"
+            class="w-full py-4 bg-black hover:bg-gray-900 active:scale-[0.98] text-white font-semibold rounded-2xl transition-all shadow-lg shadow-black/10 flex items-center justify-center space-x-2 disabled:opacity-70 disabled:pointer-events-none text-[15px]"
         >
-        <template v-if="!isSubmitting">完成注册</template>
-        <template v-else>
-            <svg class="animate-spin h-5 w-5 text-white mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            正在注册中...
-        </template>
+            <span v-if="isSubmitting" class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+            <span>{{ isSubmitting ? '正在构建安全凭证...' : '立即注册并加入' }}</span>
         </button>
+        </form>
 
-        <div class="mt-8 text-center text-sm text-gray-400">
-        已有账户？ <router-link to="/login" class="text-black font-bold hover:underline">立即登录</router-link>
+        <div class="mt-8 text-center text-[14px] text-gray-400">
+        已有账号？
+        <router-link to="/login" class="text-black font-semibold hover:underline">返回登录</router-link>
         </div>
     </div>
     </div>
@@ -162,53 +173,31 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { registerCandidate } from '@/api/auth'
-import { toast } from '@/utils/toast' // 🎯 引入通用 Apple-Style 提示工具
+import { registerCandidate, registerEnterprise } from '@/api/auth'
+import { toast } from '@/utils/toast'
 
 const router = useRouter()
-
-// 核心状态控制
-const role = ref<'candidate' | 'enterprise'>('candidate') // 身份：个人 / 企业
-const registerMethod = ref<'phone' | 'email'>('phone')     // 注册方式：手机（默认） / 邮箱
+const role = ref<'candidate' | 'enterprise'>('candidate')
+const registerMethod = ref<'phone' | 'email'>('phone')
 const isSubmitting = ref(false)
 
-// 响应式表单
 const form = reactive({
     phone: '',
     email: '',
     password: '',
     confirmPassword: '',
+    // 🏢 企业专属注册数据
+    username: '',
     enterpriseName: '',
-    industry: '',
-    agree: false
+    enterpriseCode: '',
+    contactName: '',
+    legalPerson: '' // 🎯 已添加法人字段映射
 })
 
-const submitRegister = async () => {
+const handleRegister = async () => {
     if (form.password !== form.confirmPassword) {
-    toast.error('两次密码输入不一致') // 🎯 替换
+    toast.error('两次密码输入不一致')
     return
-    }
-
-    // 整理数据，非当前模式的字段强制清空，避免垃圾数据污染接口
-    if (registerMethod.value === 'phone') {
-    form.email = ''
-    if (!form.phone || !form.password) {
-        toast.warning('请完整填写手机号和密码') // 🎯 替换
-        return
-    }
-    } else {
-    form.phone = ''
-    if (!form.email || !form.password) {
-        toast.warning('请完整填写邮箱和密码') // 🎯 替换
-        return
-    }
-    }
-
-    if (role.value === 'enterprise') {
-    if (!form.enterpriseName) {
-        toast.warning('请输入企业工商名称') // 🎯 替换
-        return
-    }
     }
 
     isSubmitting.value = true
@@ -216,23 +205,80 @@ const submitRegister = async () => {
     try {
     if (role.value === 'candidate') {
         // 个人端注册
+        if (registerMethod.value === 'phone') {
+        form.email = ''
+        if (!form.phone || !form.password) {
+            toast.warning('请完整填写手机号和密码')
+            isSubmitting.value = false
+            return
+        }
+        } else {
+        form.phone = ''
+        if (!form.email || !form.password) {
+            toast.warning('请完整填写邮箱和密码')
+            isSubmitting.value = false
+            return
+        }
+        }
+
         await registerCandidate({
         phone: form.phone || undefined,
         email: form.email || undefined,
         password: form.password
         })
-        toast.success('个人账户注册成功！') // 🎯 替换
+
+        toast.success('个人求职账号注册成功！')
+        router.push('/login')
     } else {
-        // 企业端注册模拟
-        toast.warning(`企业注册暂未开放，稍后为您对接：${form.enterpriseName}`) // 🎯 替换
+        // 企业端注册 - 对应达梦数据库的 NOT NULL 强校验进行前端预校验
+        if (!form.username || !form.password) {
+        toast.warning('请设定企业登录账号和登录密码')
+        isSubmitting.value = false
+        return
+        }
+        if (!form.enterpriseName) {
+        toast.warning('请填写企业工商全称')
+        isSubmitting.value = false
+        return
+        }
+        if (!form.legalPerson) {
+        toast.warning('请填写企业法人代表姓名')
+        isSubmitting.value = false
+        return
+        }
+        if (!form.enterpriseCode) {
+        toast.warning('请填写统一社会信用代码')
+        isSubmitting.value = false
+        return
+        }
+        if (!form.contactName) {
+        toast.warning('请填写联系人姓名')
+        isSubmitting.value = false
+        return
+        }
+        if (!form.phone) {
+        toast.warning('请填写联系人手机号码')
+        isSubmitting.value = false
+        return
+        }
+
+        // 发起请求
+        await registerEnterprise({
+        username: form.username,
+        password: form.password,
+        enterpriseName: form.enterpriseName,
+        legalPerson: form.legalPerson, // 🎯 成功映射并传输
+        enterpriseCode: form.enterpriseCode,
+        contactName: form.contactName,
+        contactPhone: form.phone,
+        email: form.email || undefined
+        })
+
+        toast.success('企业注册申请提交成功，请联系管理员审核！')
+        router.push('/login')
     }
-
-    router.push('/login')
-
     } catch (error: any) {
-    console.error('【注册异常】：', error)
-    // 细节：若 Axios 拦截器已经弹过 toast，此处便只做 fallback 兜底
-    toast.error(error.message || '注册失败，请重试！') 
+    toast.error(error.message || '注册失败，请稍后重试')
     } finally {
     isSubmitting.value = false
     }
@@ -246,5 +292,24 @@ const submitRegister = async () => {
 .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeIn {
+    from {
+    opacity: 0;
+    transform: translateY(8px);
+    }
+    to {
+    opacity: 1;
+    transform: translateY(0);
+    }
+}
+
+input:focus {
+    box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.03);
 }
 </style>

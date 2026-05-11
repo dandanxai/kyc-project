@@ -13,15 +13,14 @@ import org.springframework.web.servlet.HandlerInterceptor;
 
 /**
  * @program: kyc-api
- * @description: 用户端拦截器（接入真实 JWT 安全验证）
+ * @description: 企业端安全拦截器（确保只有企业角色能访问企业后台）
  * @author: 黄胜
- * @create: 2026-05-08 12:08
  **/
 @Component
-public class PortalAuthInterceptor implements HandlerInterceptor {
+public class EnterpriseAuthInterceptor implements HandlerInterceptor {
 
     @Autowired
-    private JwtUtil jwtUtil; // 🎯 注入刚刚写好的 JWT 工具类
+    private JwtUtil jwtUtil; // 注入 JWT 工具类解析 Token
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
@@ -33,49 +32,47 @@ public class PortalAuthInterceptor implements HandlerInterceptor {
         // 2. 从请求头中获取 Authorization Token
         String token = request.getHeader("Authorization");
 
-        // 🎯 3. 核心防御：严格防空、防前端 "null"、"undefined" 脏字符串（与企业端对齐）
+        // 🎯 3. 核心防御：严格防空、防前端 "null"、"undefined" 脏字符串
         if (!StringUtils.hasText(token) || "null".equalsIgnoreCase(token.trim()) || "undefined".equalsIgnoreCase(token.trim())) {
-            CommonResult<Void> errorResult = CommonResult.unauthorized("您的登录已过期，请重新登录");
+            CommonResult<Void> errorResult = CommonResult.unauthorized("企业账户登录已过期或无权访问，请重新登录");
             handleError(response, errorResult);
             return false;
         }
 
-        // 🎯 4. 增加 try-catch 结构，防止解析损坏/过期的 Token 时触发底层异常崩溃
+        // 🎯 4. 增加 try-catch 包裹，防止 JWT 解析库在遇到失效/受损 Token 时崩溃抛出 500
         try {
-            // 解析 Token
+            // 解析 Token 并验证是否过期
             Claims claims = jwtUtil.parseToken(token);
-
-            if (claims != null && !jwtUtil.isTokenExpired(token)) {
-                // 5. 盘查通过！从 Token 中提取出用户 ID 和 角色类型
+            if (claims != null) {
                 String userId = (String) claims.get("userId");
                 String userType = (String) claims.get("userType");
 
-                // 6. 确保是个人用户（candidate）访问用户端，防止身份越权
-                if ("candidate".equals(userType)) {
-                    // 将当前登录用户 ID 存入 request 作用域中
+                // 🔴 核心权限锁：确保是企业用户（enterprise）访问
+                if ("enterprise".equals(userType)) {
+                    // 将当前登录企业 ID 存入 request 作用域中
                     request.setAttribute("currentUserId", userId);
-                    com.kyc.common.context.UserContext.setUserId(Long.parseLong(userId));
-                    return true; // 🎯 放行请求！
+                    // 写入上下文（注意：之前你这里错写成了 UserContext，企业端建议写入 EnterpriseContext 防止线程变量污染）
+                    com.kyc.common.context.EnterpriseContext.setEnterpriseId(Long.parseLong(userId));
+                    return true; // 🎯 盘查通过，放行！
                 }
             }
         } catch (Exception e) {
-            // 捕获可能因为 Token 格式损坏、过期、空指针引发的解析异常，优雅响应 401
+            // 捕获任何可能因为 Token 格式损坏、过期、空指针引发的解析异常
             CommonResult<Void> errorResult = CommonResult.unauthorized("身份令牌已失效，请重新登录");
             handleError(response, errorResult);
             return false;
         }
 
-        // 7. 盘查失败，规范返回 401
-        CommonResult<Void> errorResult = CommonResult.unauthorized("您的登录已过期，请重新登录");
+        // 5. 盘查失败，返回标准的 401 未授权
+        CommonResult<Void> errorResult = CommonResult.unauthorized("企业账户登录已过期或无权访问，请重新登录");
         handleError(response, errorResult);
         return false;
     }
 
-    // 🎯 规范：使用 Spring 官方推荐的 Jackson ObjectMapper 进行对象序列化
+    // 规范序列化
     private void handleError(HttpServletResponse response, CommonResult<Void> result) throws Exception {
         response.setContentType("application/json;charset=UTF-8");
-        // 401 代表未授权（或者跟你的业务设计走，如设置为 200，在 Body 里放错误码）
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401 状态码
 
         ObjectMapper objectMapper = new ObjectMapper();
         String json = objectMapper.writeValueAsString(result);
@@ -85,7 +82,7 @@ public class PortalAuthInterceptor implements HandlerInterceptor {
 
     @Override
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
-        // 🎯 请求结束时，必须清理 ThreadLocal，防止线程污染
-        com.kyc.common.context.UserContext.clear();
+        // 🎯 请求结束后，务必及时清理 ThreadLocal 内存，防止内存泄漏和线程复用污染
+        com.kyc.common.context.EnterpriseContext.clear();
     }
 }

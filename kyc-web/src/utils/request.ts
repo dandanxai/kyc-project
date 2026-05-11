@@ -28,6 +28,12 @@ request.interceptors.request.use(
 // 响应拦截器
 request.interceptors.response.use(
 (response) => {
+    // 🎯 核心修复：如果请求时指定了 responseType 为 'blob'，或者返回的数据本身就是 Blob 实例
+    // 则说明这是文件流/二进制流，直接无条件返回 response.data，绕过下方的 JSON 业务 code 校验！
+    if (response.config.responseType === 'blob' || response.data instanceof Blob) {
+    return response.data
+    }
+
     const res = response.data
     
     if (res.code === 200) {

@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Competency Chart Sandbox</title>
+    <script src="https://gw.alipayobjects.com/os/lib/antv/g6/4.3.11/dist/g6.min.js"></script>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: transparent; /* 完美融入 Vue 暗黑磨砂底色 */
+            overflow: hidden;
+        }
+        #container {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+
+    <script>
+        let graph = null;
+
+        // 🎯 核心：接收来自 Vue 父亲组件的实时数据投递
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'RENDER_COMPETENCY_DATA') {
+                const profile = event.data.data;
+                renderGraph(profile);
+            }
+        });
+
+        // 🎯 1. 注册 Python 版本的「中心核心节点」
+        G6.registerNode('center-node', {
+            draw(cfg, group) {
+                const r = cfg.size / 2;
+                // 外发光光圈
+                group.addShape('circle', {
+                    attrs: {
+                        x: 0, y: 0, r: r + 15,
+                        fill: 'rgba(255, 45, 85, 0.1)',
+                        stroke: 'rgba(255, 45, 85, 0.3)',
+                        lineWidth: 1,
+                    },
+                    name: 'glow-shape',
+                });
+                // 核心实体圈
+                const keyShape = group.addShape('circle', {
+                    attrs: {
+                        x: 0, y: 0, r: r,
+                        fill: '#18181b',
+                        stroke: '#FF2D55',
+                        lineWidth: 3,
+                        cursor: 'pointer'
+                    },
+                    name: 'key-shape',
+                });
+                // 头像图片
+                group.addShape('image', {
+                    attrs: {
+                        x: -r + 10, y: -r + 10,
+                        width: r*2 - 20, height: r*2 - 20,
+                        img: cfg.avatar,
+                    },
+                    name: 'avatar-shape',
+                });
+                // 文字
+                group.addShape('text', {
+                    attrs: {
+                        x: 0, y: r + 20,
+                        text: cfg.label,
+                        fontSize: 14,
+                        fontWeight: 'bold',
+                        fill: '#ffffff',
+                        textAlign: 'center',
+                    },
+                    name: 'text-shape',
+                });
+                group.addShape('text', {
+                    attrs: {
+                        x: 0, y: r + 36,
+                        text: cfg.desc,
+                        fontSize: 10,
+                        fill: '#8e8e93',
+                        textAlign: 'center',
+                    },
+                    name: 'desc-shape',
+                });
+                return keyShape;
+            }
+        });
+
+        // 🎯 2. 注册 Python 版本的「二级分类节点」
+        G6.registerNode('category-node', {
+            draw(cfg, group) {
+                const [w, h] = cfg.size;
+                const keyShape = group.addShape('rect', {
+                    attrs: {
+                        x: -w/2, y: -h/2, width: w, height: h,
+                        radius: 20,
+                        fill: cfg.bgColor,
+                        stroke: cfg.styleColor,
+                        lineWidth: 1.5,
+                    },
+                    name: 'key-shape'
+                });
+                group.addShape('text', {
+                    attrs: {
+                        x: 0, y: 4,
+                        text: cfg.label,
+                        fontSize: 11,
+                        fontWeight: 'bold',
+                        fill: cfg.textColor,
+                        textAlign: 'center',
+                    },
+                    name: 'text-shape'
+                });
+                return keyShape;
+            }
+        });
+
+        // 🎯 3. 注册 Python 版本的「终极技能卡片节点」
+        G6.registerNode('skill-node', {
+            draw(cfg, group) {
+                const [w, h] = cfg.size;
+                // 背景毛玻璃卡片
+                const keyShape = group.addShape('rect', {
+                    attrs: {
+                        x: -w/2, y: -h/2, width: w, height: h,
+                        radius: 8,
+                        fill: '#1c1c1e',
+                        stroke: 'rgba(255,255,255,0.08)',
+                        lineWidth: 1,
+                        shadowColor: cfg.borderColor,
+                        shadowBlur: 8,
+                        shadowOpacity: 0.15
+                    },
+                    name: 'key-shape'
+                });
+                // 技能 Logo 图标
+                group.addShape('image', {
+                    attrs: {
+                        x: -w/2 + 10, y: -12,
+                        width: 24, height: 24,
+                        img: cfg.icon
+                    },
+                    name: 'icon-shape'
+                });
+                // 技能名字
+                group.addShape('text', {
+                    attrs: {
+                        x: -w/2 + 42, y: -2,
+                        text: cfg.label,
+                        fontSize: 11,
+                        fontWeight: 'bold',
+                        fill: '#ffffff',
+                    },
+                    name: 'text-shape'
+                });
+                // 级别小标
+                group.addShape('rect', {
+                    attrs: {
+                        x: -w/2 + 42, y: 6,
+                        width: 32, height: 14,
+                        radius: 3,
+                        fill: cfg.levelColor + '22',
+                    },
+                    name: 'tag-bg'
+                });
+                group.addShape('text', {
+                    attrs: {
+                        x: -w/2 + 58, y: 16,
+                        text: cfg.level,
+                        fontSize: 8,
+                        fill: cfg.levelColor,
+                        textAlign: 'center',
+                    },
+                    name: 'tag-text'
+                });
+                return keyShape;
+            }
+        });
+
+        function renderGraph(profile) {
+            const container = document.getElementById('container');
+            if (graph) {
+                graph.destroy();
+                container.innerHTML = '';
+            }
+
+            const nodes = [];
+            const edges = [];
+
+            // 1. 核心人物节点
+            nodes.push({
+                id: "center_user",
+                label: profile.name,
+                type: "center-node",
+                avatar: profile.avatar,
+                desc: "全栈 / AI 开发者",
+                size: 80
+            });
+
+            // 风格配色定义 (与 Python 一致的 Apple 语义色)
+            const colors = {
+                "核心技术栈": { bg: "rgba(88, 86, 214, 0.15)", border: "#5856D6", text: "#8E8AE6" },
+                "代表性工程成果": { bg: "rgba(255, 45, 85, 0.15)", border: "#FF2D55", text: "#FF5E7E" },
+                "数据库/信创适配": { bg: "rgba(52, 199, 89, 0.15)", border: "#34C759", text: "#62D681" },
+                "语言与国际化": { bg: "rgba(255, 149, 0, 0.15)", border: "#FF9500", text: "#FFAE42" }
+            };
+
+            const levelColors = {
+                "精通": "#34C759",
+                "熟练": "#30B0C7",
+                "成果": "#FF2D55",
+                "项目成果": "#FF2D55",
+                "兼容适配": "#34C759",
+                "了解": "#8E8E93"
+            };
+
+            let catIndex = 0;
+            for (const [catName, skills] of Object.entries(profile.categories)) {
+                if (!skills || skills.length === 0) continue;
+
+                const catId = `cat_${catIndex}`;
+                const style = colors[catName] || { bg: "rgba(255,255,255,0.1)", border: "#ffffff", text: "#ffffff" };
+
+                // 2. 分类骨架节点
+                nodes.push({
+                    id: catId,
+                    label: catName,
+                    type: "category-node",
+                    styleColor: style.border,
+                    bgColor: style.bg,
+                    textColor: style.text,
+                    size: [150, 36]
+                });
+
+                edges.push({
+                    source: "center_user",
+                    target: catId,
+                    style: {
+                        stroke: "rgba(255,255,255,0.15)",
+                        lineWidth: 2,
+                        lineDash: [4, 4]
+                    }
+                });
+
+                // 3. 具体技能节点
+                skills.forEach((item, sIdx) => {
+                    const skillId = `${catId}_skill_${sIdx}`;
+                    const lvlColor = levelColors[item.level] || "#30B0C7";
+
+                    nodes.push({
+                        id: skillId,
+                        label: item.skill,
+                        type: "skill-node",
+                        icon: item.icon,
+                        level: item.level,
+                        levelColor: lvlColor,
+                        borderColor: style.border,
+                        size: [130, 46]
+                    });
+
+                    edges.push({
+                        source: catId,
+                        target: skillId,
+                        style: {
+                            stroke: style.border,
+                            lineWidth: 1.5,
+                            opacity: 0.4
+                        }
+                    });
+                });
+
+                catIndex++;
+            }
+
+            // 4. 绘图实例初始化
+            graph = new G6.Graph({
+                container: 'container',
+                width: container.scrollWidth || 500,
+                height: container.scrollHeight || 450,
+                fitView: true,
+                fitViewPadding: 40,
+                layout: {
+                    type: 'force',
+                    preventOverlap: true,
+                    nodeSize: 80,
+                    linkDistance: (edge) => {
+                        if (edge.source === 'center_user') return 180;
+                        return 110;
+                    },
+                    nodeStrength: -200,
+                    edgeStrength: 0.5,
+                },
+                defaultEdge: {
+                    style: {
+                        endArrow: {
+                            path: 'M 0,0 L 4,2 L 4,-2 Z',
+                            fill: 'rgba(255,255,255,0.2)'
+                        }
+                    }
+                },
+                modes: {
+                    default: ['drag-canvas', 'zoom-canvas', 'drag-node'],
+                },
+            });
+
+            graph.data({ nodes, edges });
+            graph.render();
+        }
+
+        window.onresize = () => {
+            if (!graph || graph.get('destroyed')) return;
+            const container = document.getElementById('container');
+            if (!container || !container.scrollWidth) return;
+            graph.changeSize(container.scrollWidth, container.scrollHeight);
+        };
+    </script>
+</body>
+</html>

@@ -119,3 +119,110 @@ export function updateCandidatePassword(data: UpdatePasswordParams): Promise<Api
     data // 🎯 data 里只有旧密码和新密码，不带 id
     })
 }
+
+
+// ==================== 🏢 企业端专属类型声明 ====================
+
+// 1. 企业注册参数 (对应后端 EnterpriseRegisterDTO)
+export interface EnterpriseRegisterParams {
+    username: string;       // 登录账号
+    password: string;       // 登录密码
+    enterpriseName: string; // 企业名称
+    legalPerson?: string;   // 法人代表
+    enterpriseCode?: string;// 统一社会信用代码
+    contactName?: string;   // 联系人姓名
+    contactPhone?: string;  // 联系人电话
+    email?: string;         // 企业邮箱
+}
+
+// 2. 企业登录参数 (对应后端 EnterpriseLoginDTO)
+export interface EnterpriseLoginParams {
+    username: string;       // 支持账号、社会信用代码或绑定电话
+    password: string;       // 密码
+}
+
+// 3. 企业登录成功返回载荷 (对应后端 EnterpriseLoginResultVO)
+export interface EnterpriseLoginResultData {
+    token: string;
+}
+
+// 4. 企业详细信息数据模型 (对应后端 EnterpriseUser 实体)
+export interface EnterpriseUserProfile {
+    id: number;
+    username: string;
+    enterpriseName: string;
+    legalPerson?: string;
+    enterpriseCode?: string;
+    industry?: string;      // 行业
+    scale?: string;         // 规模
+    nature?: string;        // 性质
+    logo?: string;          // LOGO URL
+    licenseUrl?: string;    // 营业执照 URL
+    contactName?: string;   // 联系人
+    contactPhone?: string;  // 联系人电话
+    email?: string;         // 邮箱
+    introduction?: string;  // 企业介绍
+    status: number;         // 状态：0待审核，1审核通过，2未通过，3禁用
+}
+
+
+// ==================== 🏢 企业端接口方法暴露 ====================
+
+/**
+ * 1. 企业自主注册
+ * 路由：POST /api/enterprise/user/register
+ */
+export function registerEnterprise(data: EnterpriseRegisterParams): Promise<ApiResponse<null>> {
+    return request({
+    url: '/enterprise/user/register',
+    method: 'post',
+    data
+    })
+}
+
+/**
+ * 2. 企业账户登录
+ * 路由：POST /api/enterprise/user/login
+ */
+export function loginEnterprise(data: EnterpriseLoginParams): Promise<ApiResponse<EnterpriseLoginResultData>> {
+    return request({
+    url: '/enterprise/user/login',
+    method: 'post',
+    data
+    })
+}
+
+/**
+ * 3. 获取当前登录企业的详细资料 (🎯 无需传参，后端从 EnterpriseContext 自动解析)
+ * 路由：GET /api/enterprise/user/profile
+ */
+export function getEnterpriseProfile(): Promise<ApiResponse<EnterpriseUserProfile>> {
+    return request({
+    url: '/enterprise/user/profile',
+    method: 'get'
+    })
+}
+
+/**
+ * 4. 更新当前企业核心业务资料 (🎯 无需传参)
+ * 路由：PUT /api/enterprise/user/profile/update
+ */
+export function updateEnterpriseProfile(data: Partial<EnterpriseUserProfile>): Promise<ApiResponse<EnterpriseUserProfile>> {
+    return request({
+    url: '/enterprise/user/profile/update',
+    method: 'put',
+    data
+    })
+}
+
+/**
+ * 5. 变更企业账户登录密码 (🎯 无需传参)
+ * 路由：PUT /api/enterprise/user/password/update
+ */
+export function updateEnterprisePassword(data: UpdatePasswordParams): Promise<ApiResponse<null>> { // 🎯 修正为已声明的 UpdatePasswordParams
+    return request({
+        url: '/enterprise/user/password/update',
+        method: 'put',
+        data
+    })
+}
